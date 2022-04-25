@@ -102,3 +102,15 @@ dist
 
 # TernJS port file
 .tern-port
+
+# gapi client secrets
+client_secret*
+
+# Yarn
+.yarn
+
+# VS Code
+.vscode
+
+# build artifacts
+lib

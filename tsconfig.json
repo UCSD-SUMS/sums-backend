@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "rootDir": "src",
+    "outDir": "lib",
+    "target": "ESNext",
+    "moduleResolution": "node",
+    "sourceMap": true
+  }
+}
