@@ -114,3 +114,6 @@ client_secret*
 
 # build artifacts
 lib
+
+# tmp
+tmp

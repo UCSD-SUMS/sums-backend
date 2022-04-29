@@ -1,3 +1,5 @@
+import { readFile } from "fs/promises";
+
 import Fastify from "fastify";
 import { DateTime } from "luxon";
 
@@ -110,6 +112,14 @@ app.get<{ Params: { email: string }; Reply: Attendance | APIError }>(
     reply.send(a);
   }
 );
+
+// TEMP VERY TEMP
+app.get<{ Params: { email: string } }>("/quals/:email", async (req, reply) => {
+  const data: { [email: string]: string } = JSON.parse(
+    await readFile("tmp/quals.json", "utf-8")
+  );
+  reply.send(`${req.params.email} -- ${data[req.params.email]}`);
+});
 
 // START SERVER
 
