@@ -54,64 +54,70 @@ let attendanceData = {
   value: {} as EveryAttendance,
 };
 
-app.get<{ Params: { email: string }; Reply: Attendance | APIError }>(
-  "/attendance/:email",
-  async (req, reply) => {
-    // refresh old attendance data
-    if (attendanceData.when < DateTime.now().minus({ seconds: 60 })) {
-      /** Fetch data from spreadsheets and map reduce to tally by email */
-      async function fD(i: string, r: string) {
-        const raw = await google.fetchJSON<{ values: string[][] }>(
-          `https://sheets.googleapis.com/v4/spreadsheets/${i}/values/${r}?dateTimeRenderOption=FORMATTED_STRING`
-        );
-        const emails = raw.values
-          .filter(
-            (row) =>
-              DateTime.fromFormat(row[0], "M/d/y H:mm:ss") >
-              DateTime.now().minus({ days: 90 })
-          )
-          .map((row) => row[3]);
-        const count: { [email: string]: number } = {};
-        for (const email of emails) {
-          count[email] = (count[email] || 0) + 1;
-        }
-        return count;
+app.get<{
+  Params: { email: string };
+  Querystring: {
+    to: string;
+  };
+  Reply: Attendance | APIError;
+}>("/attendance/:email", async (req, reply) => {
+  // refresh old attendance data
+  if (attendanceData.when < DateTime.now().minus({ seconds: 60 })) {
+    /** Fetch data from spreadsheets and map reduce to tally by email */
+    async function fD(i: string, r: string) {
+      const raw = await google.fetchJSON<{ values: string[][] }>(
+        `https://sheets.googleapis.com/v4/spreadsheets/${i}/values/${r}?dateTimeRenderOption=FORMATTED_STRING`
+      );
+      const dateTo = req.query.to
+        ? DateTime.fromFormat(req.query.to, "yyyy-dd-MM")
+        : DateTime.now();
+      const emails = raw.values
+        .filter(
+          (row) =>
+            DateTime.fromFormat(row[0], "M/d/y H:mm:ss") >
+            dateTo.minus({ days: 90 })
+        )
+        .map((row) => row[3]);
+      const count: { [email: string]: number } = {};
+      for (const email of emails) {
+        count[email] = (count[email] || 0) + 1;
       }
+      return count;
+    }
 
-      // pull data from EVENTS and MEETINGS spreadsheets
-      const eventId = "1H3KO4Ee9OAJtXGgFFwXoEYYCyfmKqzpVenXUPOvj-c0";
-      const meetingId = "1G-osG2mqbmgTdSygtZXg1DzGRgyWMbKvl_ymoW9kRBA";
-      const eventRange = "A380:D";
-      const meetingRange = "A248:D";
-      const eventData = await fD(eventId, eventRange);
-      const meetingData = await fD(meetingId, meetingRange);
+    // pull data from EVENTS and MEETINGS spreadsheets
+    const eventId = "1H3KO4Ee9OAJtXGgFFwXoEYYCyfmKqzpVenXUPOvj-c0";
+    const meetingId = "1G-osG2mqbmgTdSygtZXg1DzGRgyWMbKvl_ymoW9kRBA";
+    const eventRange = "A380:D";
+    const meetingRange = "A248:D";
+    const eventData = await fD(eventId, eventRange);
+    const meetingData = await fD(meetingId, meetingRange);
 
-      // combine EVENTS and MEETINGS data by email
-      const everyAttendance: EveryAttendance = {};
-      for (const email of new Set(
-        Object.keys(eventData).concat(Object.keys(meetingData))
-      )) {
-        everyAttendance[email] = {
-          events: eventData[email] || 0,
-          meetings: meetingData[email] || 0,
-        };
-      }
-
-      // store new attendance data
-      attendanceData = {
-        when: DateTime.now(),
-        value: everyAttendance,
+    // combine EVENTS and MEETINGS data by email
+    const everyAttendance: EveryAttendance = {};
+    for (const email of new Set(
+      Object.keys(eventData).concat(Object.keys(meetingData))
+    )) {
+      everyAttendance[email] = {
+        events: eventData[email] || 0,
+        meetings: meetingData[email] || 0,
       };
     }
 
-    // send back attendance data
-    const a = attendanceData.value[req.params.email] || {
-      events: 0,
-      meetings: 0,
+    // store new attendance data
+    attendanceData = {
+      when: DateTime.now(),
+      value: everyAttendance,
     };
-    reply.send(a);
   }
-);
+
+  // send back attendance data
+  const a = attendanceData.value[req.params.email] || {
+    events: 0,
+    meetings: 0,
+  };
+  reply.send(a);
+});
 
 // TEMP VERY TEMP
 app.get<{ Params: { email: string } }>("/quals/:email", async (req, reply) => {
