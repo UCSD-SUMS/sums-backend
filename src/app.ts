@@ -69,7 +69,7 @@ app.get<{
         `https://sheets.googleapis.com/v4/spreadsheets/${i}/values/${r}?dateTimeRenderOption=FORMATTED_STRING`
       );
       const dateTo = req.query.to
-        ? DateTime.fromFormat(req.query.to, "yyyy-dd-MM")
+        ? DateTime.fromFormat(req.query.to, "yyyy-MM-dd")
         : DateTime.now();
       const emails = raw.values
         .filter(
